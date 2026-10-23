@@ -1,0 +1,143 @@
+name: Update What2Craft Pages
+
+# Manual only until the first deployment has been verified.
+on:
+  workflow_dispatch:
+    inputs:
+      refresh_recipes:
+        description: Refresh recipe metadata (also fetched automatically on a cache miss)
+        type: boolean
+        default: false
+      force_prices:
+        description: Fetch all market observations instead of reusing samples under 12 hours old
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: what2craft-pages
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  build:
+    name: Test, refresh, and build static site
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      # Fail early if Pages has not been enabled, before a lengthy fetch.
+      - name: Check Pages configuration
+        uses: actions/configure-pages@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Set up Node for browser tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Check source and run available regression tests
+        timeout-minutes: 10
+        run: |
+          python -m compileall -q src
+          node --check src/static/app.js
+          node --check src/static/static-data.js
+          # This repository currently ignores tests/. Keep checks runnable both
+          # with and without tests in the checkout; export validation is required.
+          if [ -d tests ]; then
+            python -m unittest discover -s tests -p 'test_*.py'
+          fi
+          if [ -f tests/test_ui.cjs ]; then
+            node tests/test_ui.cjs
+          fi
+
+      - name: Restore recipe metadata and raw market observations
+        id: observations
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            data/recipes.json
+            data/market_cache.sqlite3
+          key: what2craft-${{ runner.os }}-l100-h200-v1-${{ hashFiles('src/fetch_recipes.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            what2craft-${{ runner.os }}-l100-h200-v1-${{ hashFiles('src/fetch_recipes.py') }}-
+
+      - name: Fetch recipe metadata when needed
+        if: ${{ inputs.refresh_recipes || hashFiles('data/recipes.json') == '' }}
+        timeout-minutes: 15
+        run: python src/fetch_recipes.py
+
+      - name: Refresh market observations
+        id: refresh
+        timeout-minutes: 285
+        env:
+          FORCE_PRICES: ${{ inputs.force_prices }}
+        run: |
+          if [ "$FORCE_PRICES" = "true" ]; then
+            python src/fetch_prices.py --force
+          else
+            python src/fetch_prices.py --max-age-hours 12
+          fi
+
+      # Split restore/save actions retain completed batches even if the refresh
+      # fails. Cache entries are immutable, so each attempt gets a unique key.
+      - name: Preserve fetched progress, including a partial refresh
+        if: ${{ always() && !cancelled() && steps.observations.outcome == 'success' && hashFiles('data/market_cache.sqlite3') != '' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            data/recipes.json
+            data/market_cache.sqlite3
+          key: ${{ steps.observations.outputs.cache-primary-key }}
+
+      - name: Compute crafting estimates
+        timeout-minutes: 15
+        run: python src/compute_profit.py
+
+      - name: Export static website
+        timeout-minutes: 15
+        run: python src/export_static.py --output site
+
+      - name: Validate exported website
+        run: python src/validate_static.py --site site
+
+      - name: Upload only the generated website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+          retention-days: 1
+
+  deploy:
+    name: Deploy validated website
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

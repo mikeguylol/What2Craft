@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What2Craft</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>What2Craft</h1>
+    <div class="header-controls">
+      <input type="search" id="search-box" aria-label="Search items" placeholder="Search items…" autocomplete="off">
+      <label class="filter-label">
+        Max level:
+        <input type="number" id="max-level-input" min="1" max="100" placeholder="any">
+      </label>
+      <label class="filter-label">
+        Max cost:
+        <input type="number" id="max-cost-input" min="0" placeholder="any">
+      </label>
+      <div class="dataset-toggle">
+        <button class="toggle-btn active" data-dataset="liquid">Liquid only</button>
+        <button class="toggle-btn" data-dataset="all">All craftable items</button>
+      </div>
+      <label class="world-select-label">
+        Selling world:
+        <select id="world-select">
+          <option value="region" selected>All Data Centers (combined)</option>
+        </select>
+      </label>
+      <label>Product quality:
+        <select id="product-quality">
+          <option value="auto">Auto</option><option value="nq">NQ only</option><option value="hq">HQ only</option>
+        </select>
+      </label>
+      <label>Ingredient quality:
+        <select id="ingredient-quality">
+          <option value="cheapest">Cheapest available</option><option value="nq">NQ only</option><option value="hq">HQ preferred</option>
+        </select>
+      </label>
+      <label>Class:
+        <select id="job-filter"><option value="">All classes</option><option>CRP</option><option>BSM</option><option>ARM</option><option>GSM</option><option>LTW</option><option>WVR</option><option>ALC</option><option>CUL</option></select>
+      </label>
+      <label>Min profit: <input id="min-profit" type="number" min="0" placeholder="any"></label>
+      <label>Min units/day: <input id="min-demand" type="number" min="0" step="0.1" placeholder="any"></label>
+      <button id="reset-filters" type="button">Reset filters</button>
+      <button id="refresh-btn">Refresh prices</button>
+      <span id="refresh-status"></span>
+    </div>
+    <div id="refresh-progress-wrap" class="refresh-progress-wrap" hidden>
+      <div class="refresh-progress-track">
+        <div id="refresh-progress-bar" class="refresh-progress-bar"></div>
+      </div>
+      <span id="refresh-progress-text" class="refresh-progress-text"></span>
+    </div>
+    <p id="meta-line" class="meta-line"></p>
+  </header>
+
+  <details class="explainer" open>
+    <summary>A tool for finding what to craft in FFXIV!</summary>
+    <ul>
+      <li><strong>A rough reference for what crafts might be profitable</strong></li>
+      <li>Could not exist without Universalis! All data on this site was collected using the Universalis API.</li>
+      <li>In general, the list estimates the profit margins for all sellable, craftable items</li>
+      <li>The list assumes all ingredients for the craft are bought on the market board</li>
+      <li>Sort by daily potential to find profitable items that also sell plenty!</li>
+      <li>By default, the list only shows items that sell at least 0.5 times per day</li>
+      <li><strong>Hover</strong> over est. materials to see the ingredient list and the prices of each ingredient!</li>
+      <li>Prices shown can be assumed to be for NQ if NQ items are more common, and HQ if HQ items are more common. If they are equally common, prices consider both.</li>
+    </ul>
+  </details>
+
+  <nav class="pagination" aria-label="Results pages">
+    <button id="page-prev" type="button" disabled>Previous</button>
+    <span id="page-status" role="status" aria-live="polite">Page 1 of 1</span>
+    <button id="page-next" type="button" disabled>Next</button>
+    <span>100 items per page</span>
+  </nav>
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th data-key="item">Item / quality</th>
+        <th data-key="profit" class="num">Est. profit / craft</th>
+        <th data-key="cost" class="num">Est. materials</th>
+        <th data-key="margin_pct" class="num">Return on cost</th>
+        <th data-key="sale_velocity_per_day" class="num">Units/day</th>
+        <th data-key="daily_profit_potential" class="num" title="Profit per craft × units sold per day ÷ recipe yield. Assumes capturing all observed sales; not expected earnings.">Daily potential ⓘ</th>
+        <th data-key="crafter_job">Class</th>
+        <th data-key="level" class="num">Level</th>
+        <th data-key="yield_qty" class="num">Yield</th>
+      </tr>
+    </thead>
+    <tbody id="data-body"></tbody>
+  </table>
+  <nav class="pagination" aria-label="Results pages at bottom">
+    <button id="page-prev-bottom" type="button" disabled>Previous</button>
+    <span id="page-status-bottom" role="status" aria-live="polite">Page 1 of 1</span>
+    <button id="page-next-bottom" type="button" disabled>Next</button>
+    <span>100 items per page</span>
+  </nav>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

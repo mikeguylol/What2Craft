@@ -1,0 +1,17 @@
+data/*.json
+data/*.csv
+data/request_logs/
+data/*.sqlite3*
+data/*.tmp
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+site/
+.what2craft-*/
+tests/
+
+.DS_Store
+Thumbs.db
+.vscode/

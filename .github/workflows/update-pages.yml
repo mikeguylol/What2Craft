@@ -1,7 +1,10 @@
 name: Update What2Craft Pages
 
-# Manual only until the first deployment has been verified.
+# Run daily away from the busy top of the hour; manual runs remain available.
 on:
+  schedule:
+    # 06:17 UTC = 02:17 Toronto during daylight saving, 01:17 otherwise.
+    - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
       refresh_recipes:

@@ -9,3 +9,5 @@ Compare estimated crafting profit, material costs, and sales activity across Nor
 Prices and sales figures are estimates, not guaranteed profits. Check current listings before buying materials.
 
 Powered by [Universalis](https://universalis.app/) and [XIVAPI](https://xivapi.com/). If you find this useful, please consider supporting Universalis!
+
+Uses [GoatCounter](https://www.goatcounter.com/) for analytics.
